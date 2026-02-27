@@ -43,29 +43,8 @@ from datetime import datetime
 import uuid
 import pytz
 
-#  my string
-uri = "mongodb+srv://project00067:Project123@cluster0.vzzvdti.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 
-# Create MongoDB Client
-#client = MongoClient(uri, server_api=ServerApi('1'))
-client = MongoClient(
-    uri,
-    server_api=ServerApi('1'),
-    serverSelectionTimeoutMS=5000  # 5 sec timeout
-)
 
-try:
-    client.admin.command("ping")
-except Exception as e:
-    st.error("⚠️ MongoDB Connection Failed")
-    st.stop()
-
-# Create Database
-db = client["diabetes_app"]
-
-# Create Collection
-users_collection = db["registered_users"]
-predictions_collection = db["predictions"]
 
 # -----------------------------
 # Page Configuration
@@ -89,10 +68,40 @@ if "show_success" not in st.session_state:
     st.session_state.show_success = False
 
 
+# -----------------------------
+# MongoDB Initialization (Cached)
+# -----------------------------
+
+#  my string
+uri = "mongodb+srv://project00067:Project123@cluster0.vzzvdti.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+@st.cache_resource
+def init_mongodb():
+    try:
+        client = MongoClient(
+            uri,
+            server_api=ServerApi('1'),
+            serverSelectionTimeoutMS=5000
+        )
+
+        client.admin.command("ping")
+
+        db = client["diabetes_app"]
+        users_collection = db["registered_users"]
+        predictions_collection = db["predictions"]
+
+        return users_collection, predictions_collection
+
+    except Exception:
+        st.error("⚠️ MongoDB Connection Failed")
+        st.stop()    
+
+
 # =====================================================
 # REGISTRATION PAGE
 # =====================================================
 def registration_page():
+    users_collection, predictions_collection = init_mongodb()
 
     # Convert image to base64
     def get_base64_image(image_file):
@@ -344,6 +353,8 @@ def load_model():
         st.stop()
 
 def prediction_page():
+       
+       users_collection, predictions_collection = init_mongodb()
          
        # ✅ THEN load model
 
